@@ -1,1 +1,2 @@
-# gitbook-vpclattice
+# Amazon VPC Lattice
+
