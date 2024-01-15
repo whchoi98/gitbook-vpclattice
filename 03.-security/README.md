@@ -4,6 +4,10 @@ description: 'Update : 2024.01.10'
 
 # 03. Security
 
+### 소개
+
+
+
 VPC Lattice는 기본적으로 안전한 구조입니다. 공유하려는 서비스와 액세스를 제공하려는 VPC에 대해 명시해야 하기 때문입니다. Multi-Account 시나리오의 경우 AWS RAM(Resource Access Manager)를 사용하여 Account 경계를 넘어 Resource를 공유해야 합니다. VPC Lattice는 네트워크의 여러 계층에서 심층 방어 전략을 구현할 수 있는 프레임워크를 제공합니다.
 
 * 첫 번째 계층은 서비스 네트워크와의 서비스 및 VPC 연결입니다. VPC 또는 특정 서비스가 서비스 네트워크에 연결되지 않은 경우 VPC의 클라이언트는 서비스에 액세스할 수 없습니다.
@@ -19,3 +23,10 @@ VPC Lattice는 기본적으로 안전한 구조입니다. 공유하려는 서비
 3. AWS SigV4를 사용하여 'reservation' 서비스에 대한 http 요청에 서명.
 
 <figure><img src="../.gitbook/assets/image (37).png" alt=""><figcaption></figcaption></figure>
+
+### 목차
+
+* [**사전준비**](1..md)
+* [**서비스 네트워크 보호**](2..md)
+* [**인증정책 기반 서비스 보호**](3..md)
+* [**AWS SigV4**](4.-aws-sigv4.md)
