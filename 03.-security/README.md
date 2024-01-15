@@ -17,3 +17,5 @@ VPC Lattice는 기본적으로 안전한 구조입니다. 공유하려는 서비
 1. Service Network에 엄격한 인증 정책을 적용하여 인증된 사용자만 허용
 2. Service (Reservation, Parking)에 보다 세부적인 인증 정책을 적용합니다. 'LatticeWorkshop InstanceClient1'에서만 액세스를 허용하도록 "Reservation Service"를 구성하겠습니다. 그런 다음 'LatticeWorkshop InstanceClient2'에서 "Rate Target Group"에 대한 GET 및 "Payments Target Group"에 대한 POST를 허용하도록 Parking Service를 구성합니다.
 3. AWS SigV4를 사용하여 'reservation' 서비스에 대한 http 요청에 서명.
+
+<figure><img src="../.gitbook/assets/image (37).png" alt=""><figcaption></figcaption></figure>
