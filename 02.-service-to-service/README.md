@@ -12,7 +12,7 @@ description: 'Update : 2024.01.08'
 
 위의 SupperApp 구성을 위해서 아래와 같은 3단계의 구성을 진행할 것입니다.
 
-<figure><img src="../.gitbook/assets/image (1) (1) (1) (1) (1) (1) (1).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (1) (1) (1) (1) (1) (1) (1) (1).png" alt=""><figcaption></figcaption></figure>
 
 ### 목차
 
