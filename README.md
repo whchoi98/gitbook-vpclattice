@@ -11,4 +11,4 @@ description: 'Update : 2024.01.15'
 * [02. Service to Service 연결](02.-service-to-service/) (1h)
 * [03.Security](03.-security/) (1h)
 * [04.Observability](04.-observability/) (20m)
-* [05.Gateway API Controller](05.gateway-api-controller.md) (1h)
+* [05.Gateway API Controller](05.gateway-api-controller/) (1h)
