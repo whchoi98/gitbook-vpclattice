@@ -1,29 +1,10 @@
-# Page 1
+# AWS Gateway API Controller 설치
 
 
 
 ```
-export AWS_REGION="us-west-2"
-export LATTICE_DOMAIN_NAME="lattice.io"
-export CLUSTER1_NAME="c1"
-export VPC1_NAME='LatticeWorkshop Clients VPC'
-export VPC1_FILTER="Name=tag:Name,Values='$VPC1_NAME'"
-export CLUSTER2_NAME="c2"
-export VPC2_NAME='LatticeWorkshop Rates VPC'
-export VPC2_FILTER="Name=tag:Name,Values='$VPC2_NAME'"
-export ASSETS_HOSTNAME="assets-${CLUSTER1_NAME}"
-export CART_HOSTNAME="cart-${CLUSTER1_NAME}"
-export CATALOG_HOSTNAME="catalog-${CLUSTER1_NAME}"
-export CHECKOUT_HOSTNAME="checkout-${CLUSTER2_NAME}"
-export ASSETS_FQDN="${ASSETS_HOSTNAME}.${LATTICE_DOMAIN_NAME}"
-export CART_FQDN="${CART_HOSTNAME}.${LATTICE_DOMAIN_NAME}"
-export CATALOG_FQDN="${CATALOG_HOSTNAME}.${LATTICE_DOMAIN_NAME}"
-export CHECKOUT_FQDN="${CHECKOUT_HOSTNAME}.${LATTICE_DOMAIN_NAME}"
-export CLUSTER_NAME=$CLUSTER1_NAME
 
-~ cd/
-~ ~/environment/vpclattice/cloud9/init.sh 
-
+~/environment/vpclattice/cloud9/eks-cluster1.sh
 
 ```
 
@@ -32,11 +13,11 @@ VPC Lattice 네트워크에서 트래픽을 수신하도록 Security Group을 �
 VPC Lattice와 통신하는 모든 포드가 VPC Lattice 관리형 PrefixList의 트래픽을 허용하도록 Security Group을 설정해야 합니다. [자세한 내용은 Security Group을 사용하여 자원에 대한 트래픽 제어 방법을 참조할 수 있습니다.](https://docs.aws.amazon.com/vpc/latest/userguide/VPC\_SecurityGroups.html)Lattice에는 IPv4 및 IPv6 PrefixList가 모두 있습니다.
 
 ```
-CLUSTER_SG=$(aws eks describe-cluster --name $CLUSTER_NAME --output json| jq -r '.cluster.resourcesVpcConfig.clusterSecurityGroupId')
-PREFIX_LIST_ID=$(aws ec2 describe-managed-prefix-lists --query "PrefixLists[?PrefixListName=="\'com.amazonaws.$AWS_REGION.vpc-lattice\'"].PrefixListId" | jq -r '.[]')
-aws ec2 authorize-security-group-ingress --group-id $CLUSTER_SG --ip-permissions "PrefixListIds=[{PrefixListId=${PREFIX_LIST_ID}}],IpProtocol=-1"
-PREFIX_LIST_ID_IPV6=$(aws ec2 describe-managed-prefix-lists --query "PrefixLists[?PrefixListName=="\'com.amazonaws.$AWS_REGION.ipv6.vpc-lattice\'"].PrefixListId" | jq -r '.[]')
-aws ec2 authorize-security-group-ingress --group-id $CLUSTER_SG --ip-permissions "PrefixListIds=[{PrefixListId=${PREFIX_LIST_ID_IPV6}}],IpProtocol=-1"
+CLUSTER1_SG=$(aws eks describe-cluster --name $CLUSTER1_NAME --output json| jq -r '.cluster.resourcesVpcConfig.clusterSecurityGroupId')
+PREFIX_LIST_ID1=$(aws ec2 describe-managed-prefix-lists --query "PrefixLists[?PrefixListName=="\'com.amazonaws.$AWS_REGION.vpc-lattice\'"].PrefixListId" | jq -r '.[]')
+aws ec2 authorize-security-group-ingress --group-id $CLUSTER1_SG --ip-permissions "PrefixListIds=[{PrefixListId=${PREFIX_LIST_ID1}}],IpProtocol=-1"
+PREFIX_LIST_ID1_IPV6=$(aws ec2 describe-managed-prefix-lists --query "PrefixLists[?PrefixListName=="\'com.amazonaws.$AWS_REGION.ipv6.vpc-lattice\'"].PrefixListId" | jq -r '.[]')
+aws ec2 authorize-security-group-ingress --group-id $CLUSTER1_SG --ip-permissions "PrefixListIds=[{PrefixListId=${PREFIX_LIST_ID1_IPV6}}],IpProtocol=-1"
 
 ```
 
@@ -121,6 +102,7 @@ kubectl create namespace aws-application-networking-system
 
 
 ```
+cd ~/environment
 git clone https://github.com/aws/aws-application-networking-k8s.git
 
 ```
@@ -140,7 +122,7 @@ Pod Level의 권한을 위해서 "iamserviceaccount" 명령어를 수행합니�
 
 ```
 eksctl create iamserviceaccount \
-   --cluster=$CLUSTER_NAME \
+   --cluster=$CLUSTER1_NAME \
    --namespace=aws-application-networking-system \
    --name=gateway-api-controller \
    --attach-policy-arn=$VPCLatticeControllerIAMPolicyArn \
@@ -152,6 +134,8 @@ eksctl create iamserviceaccount \
 
 
 
+Gateway Controller를 아래와 같이 ECR에 로그인 한 이후, Helm을 통해 설치합니다.
+
 ```
 # login to ECR
 aws ecr-public get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin public.ecr.aws
@@ -160,12 +144,28 @@ helm install gateway-api-controller \
    oci://public.ecr.aws/aws-application-networking-k8s/aws-gateway-controller-chart\
    --version=v1.0.3 \
    --set=serviceAccount.create=false --namespace aws-application-networking-system \
-   # use "debug" for debug level logs
    --set=log.level=info \
-   # awsRegion, clusterVpcId, awsAccountId are required for case IMDS is not available.
-   --set=awsRegion= \
-   --set=clusterVpcId=$AWS_REGION \
+   --set=awsRegion=$AWS_REGION \
+   --set=clusterVpcId=$CLUSTER_VPC_ID \
    --set=awsAccountId=$ACCOUNT_ID \
-   # clusterName is required except for EKS cluster.
-   --set=clusterName=$CLUSTER_NAME
+   --set=clusterName=$CLUSTER1_NAME
+   
+```
+
+
+
+정상적으로 Gateway API Controller가 설치되었는지 확인합니다.
+
+```
+kubectl --namespace aws-application-networking-system get pods -l "app.kubernetes.io/instance=gateway-api-controller"
+
+```
+
+
+
+아래 명령어를 통해서 Gateway Class를 설치합니다.
+
+```
+kubectl apply -f ~/environment/aws-application-networking-k8s/examples/gatewayclass.yaml 
+
 ```

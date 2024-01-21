@@ -18,4 +18,5 @@
 * [04. Observability](04.-observability/README.md)
   * [1. Access Log 구성](04.-observability/1.-access-log.md)
 * [05.Gateway API Controller](05.gateway-api-controller/README.md)
-  * [Page 1](05.gateway-api-controller/page-1.md)
+  * [AWS Gateway API Controller 설치](05.gateway-api-controller/aws-gateway-api-controller.md)
+  * [Page 2](05.gateway-api-controller/page-2.md)
