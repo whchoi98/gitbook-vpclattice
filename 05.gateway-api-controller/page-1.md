@@ -1,10 +1,19 @@
 # AWS Gateway API Controller 설치
 
+01.사전 준비 및 소개 - 2. 사전준비 에서 구성한 Client VPC에 EKS Clsuter를 설치하기 위해 eksctl yaml을 생성합니다.
 
+```
+# eksctl 기반의 cluster 생성을 위한 yaml을 만듭니다.
+# ~/environment/vpclattice/cloud9/lattice_eks01.yaml 에 파일이 생성됩니다.
+~/environment/vpclattice/cloud9/eks-cluster1.sh
 
 ```
 
-~/environment/vpclattice/cloud9/eks-cluster1.sh
+정상적으로 eksctl yaml이 생성되었으면, 아래 명령을 통해 eks clsuter "c1"을 구성합니다.
+
+```
+cd ~/environment/vpclattice/cloud9/
+eksctl create cluster -f lattice_eks01.yaml
 
 ```
 
