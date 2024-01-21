@@ -4,9 +4,13 @@ description: 'Updtae : 2024.01.19'
 
 # 기본 구성하기
 
-**Setup service-to-service communications**
+## K8s에서 **service-to-service 구성**
 
 이 예제에서는 단일 VPC에 단일 클러스터를 생성한 다음 HTTP Route 2개(rate 및 inventory)와 Service 3개(Parking, Review 및 Inventory-1)를 구성합니다.
+
+
+
+### Step1. VPC Lattice Service Network 생성
 
 
 
@@ -47,4 +51,44 @@ aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER_VPC_ID}
 
 <figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
 
-&#x20;s Gateway `my-hotel`  을 생성합니다.
+### Step2. GW API에서 Gateway 생성&#x20;
+
+아래 명령을 통해서 Gateway `my-hotel`  을 생성합니다.&#x20;
+
+```
+cd ~/environment/aws-application-networking-k8s
+kubectl apply -f examples/my-hotel-gateway.yaml
+
+```
+
+아래와 같은 manifest 파일 형식입니다.
+
+```
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: my-hotel
+spec:
+  gatewayClassName: amazon-vpc-lattice
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+```
+
+my-hotel Gateway가 PROGRAMMED 상태가 True인 상태로 생성되었는지 확인합니다.
+
+```
+kubectl get gateway
+
+```
+
+아래와 같이 출력됩니다.
+
+```
+$ kubectl get gateway
+NAME       CLASS                ADDRESS   PROGRAMMED   AGE
+my-hotel   amazon-vpc-lattice             True         99s
+```
+
+""P r및 "검토 서비스"에 대한 경로 일치 라우팅을 가질 수 있는 Kubernetes HTTPRoute "속도"를 만듭니다
