@@ -182,3 +182,21 @@ kubectl --namespace aws-application-networking-system get pods -l "app.kubernete
 kubectl apply -f ~/environment/aws-application-networking-k8s/examples/gatewayclass.yaml 
 
 ```
+
+Gateway Class는 아래와 같은 manifest 포맷을 가지고 있습니다.
+
+Gateway Class는 인프라 제공자가 정의하는 클러스터 범위의 resource로서 생성 가능한 gateway를 정의합니다.
+
+VPC Lattice가 GatewayClass의 인프라 제공자가 됩니다.
+
+```
+# AWS VPC lattice provider 를 위한 Gateway Class
+# istio를 사용할 경우 metadata, spec이 istio로 변경됨
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: GatewayClass
+metadata:
+  name: amazon-vpc-lattice
+spec:
+  controllerName: application-networking.k8s.aws/gateway-api-controller
+
+```

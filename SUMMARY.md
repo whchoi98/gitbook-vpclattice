@@ -19,4 +19,4 @@
   * [1. Access Log 구성](04.-observability/1.-access-log.md)
 * [05.Gateway API Controller](05.gateway-api-controller/README.md)
   * [AWS Gateway API Controller 설치](05.gateway-api-controller/page-1.md)
-  * [Page 2](05.gateway-api-controller/page-2.md)
+  * [기본 구성하기](05.gateway-api-controller/undefined.md)
