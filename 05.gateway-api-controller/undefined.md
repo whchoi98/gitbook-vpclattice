@@ -91,4 +91,183 @@ NAME       CLASS                ADDRESS   PROGRAMMED   AGE
 my-hotel   amazon-vpc-lattice             True         99s
 ```
 
-""P r및 "검토 서비스"에 대한 경로 일치 라우팅을 가질 수 있는 Kubernetes HTTPRoute "속도"를 만듭니다
+### Step3. GW API에서 HTTP Route 생성
+
+"Parking Service및 "Review Service"를 위한 HTTP Route - "Rate" 를 생성하고, K8s의 Pod와 Service를 생성합니다.
+
+```
+kubectl apply -f examples/parking.yaml
+kubectl apply -f examples/review.yaml
+kubectl apply -f examples/rate-route-path.yaml
+
+```
+
+아래 명령으로 정상적으로 배포 되었는지 확인합니다.
+
+```
+kubectl get svc,pod,httproute
+
+```
+
+아래와 같이 배포된 것을 확인 할 수 있습니다.
+
+```
+$ kubectl get svc,pod,httproute
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+service/parking      ClusterIP   172.20.120.122   <none>        80/TCP    6m49s
+service/review       ClusterIP   172.20.114.155   <none>        80/TCP    6m47s
+
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/parking-59c9fdb57f-5g86b   1/1     Running   0          6m49s
+pod/parking-59c9fdb57f-cc9dz   1/1     Running   0          6m49s
+pod/review-766b6c9bf5-9wf5m    1/1     Running   0          6m47s
+pod/review-766b6c9bf5-sr4cg    1/1     Running   0          6m47s
+
+NAME                                        HOSTNAMES   AGE
+httproute.gateway.networking.k8s.io/rates               6m46s
+```
+
+아래는 Parking에 대한 manifest 파일 입니다.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parking
+  labels:
+    app: parking
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: parking
+  template:
+    metadata:
+      labels:
+        app: parking
+    spec:
+      containers:
+      - name: parking
+        image: public.ecr.aws/x2j8p8w7/http-server:latest
+        env:
+        - name: PodName
+          value: "parking handler pod"
+
+#K8s의 Service를 사용합니다. 아래는 ClusterIP 타입으로 구성됩니다.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parking
+spec:
+  selector:
+    app: parking
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8090
+
+```
+
+아래는 "rate-route-path" 라는 HTTPRoute Path 입니다.
+
+```
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: rates
+spec:
+  parentRefs:
+  - name: my-hotel
+    sectionName: http
+  rules:
+  - backendRefs:
+    - name: parking
+      kind: Service
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /parking
+  - backendRefs:
+    - name: review
+      kind: Service
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /review
+```
+
+추가로 HTTPRoute `inventory`  manifest 파일을 배포합니다.
+
+```
+kubectl apply -f examples/inventory-ver1.yaml
+kubectl apply -f examples/inventory-route.yaml
+
+```
+
+아래 명령으로 정상적으로 배포되었는지 확인합니다.
+
+```
+kubectl get svc,pod,httproute
+
+```
+
+아래 명령과 같이 출력됩니다.
+
+```
+$ kubectl get svc,pod,httproute
+NAME                     TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+service/inventory-ver1   ClusterIP   172.20.172.83    <none>        80/TCP    2m26s
+service/parking          ClusterIP   172.20.120.122   <none>        80/TCP    12m
+service/review           ClusterIP   172.20.114.155   <none>        80/TCP    12m
+
+NAME                                  READY   STATUS    RESTARTS   AGE
+pod/inventory-ver1-5df5f5c976-4pnhq   1/1     Running   0          2m26s
+pod/inventory-ver1-5df5f5c976-f46qs   1/1     Running   0          2m26s
+pod/parking-59c9fdb57f-5g86b          1/1     Running   0          12m
+pod/parking-59c9fdb57f-cc9dz          1/1     Running   0          12m
+pod/review-766b6c9bf5-9wf5m           1/1     Running   0          12m
+pod/review-766b6c9bf5-sr4cg           1/1     Running   0          12m
+
+NAME                                            HOSTNAMES   AGE
+httproute.gateway.networking.k8s.io/inventory               2m24s
+httproute.gateway.networking.k8s.io/rates                   12m
+```
+
+httproute "rate"의 실제 Lattice Service DNS 주소를 확인해 봅니다.
+
+```
+kubectl get httproute rates -o yaml
+k8s_rates_svc_dns=$(kubectl get httproute rates -o json | jq -r '.metadata.annotations."application-networking.k8s.aws/lattice-assigned-domain-name"')
+echo "export k8s_rates_svc_dns=${k8s_rates_svc_dns}" | tee -a ~/.bash_profile
+source ~/.bash_profile
+
+```
+
+httproute "inventory"의 실제 Lattice Service DNS 주소를 확인해 봅니다.
+
+```
+kubectl get httproute inventory -o yaml
+k8s_inventory_svc_dns=$(kubectl get httproute inventory -o json | jq -r '.metadata.annotations."application-networking.k8s.aws/lattice-assigned-domain-name"')
+echo "export k8s_inventory_svc_dns=${k8s_inventory_svc_dns}" | tee -a ~/.bash_profile
+source ~/.bash_profile
+
+```
+
+inventory-ver1 에서 rate 로 서비스 요청을 해봅니다.
+
+```
+kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/parking
+kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/review 
+
+```
+
+parking 에서 inventory-ver1 로 서비스 요청을 해봅니다.
+
+```
+kubectl exec deploy/parking -- curl $k8s_inventory_svc_dns
+
+```
+
