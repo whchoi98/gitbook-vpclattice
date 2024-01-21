@@ -1,6 +1,14 @@
+---
+description: 'Update : 2024.01.19'
+---
+
 # AWS Gateway API Controller 설치
 
-01.사전 준비 및 소개 - 2. 사전준비 에서 구성한 Client VPC에 EKS Clsuter를 설치하기 위해 eksctl yaml을 생성합니다.
+### Step1. EKS Cluster 설치
+
+#### EKS Cluster 설치 준비
+
+[01.사전 준비 및 소개 - 2. 사전준비](../01./) 에서 구성한 Client VPC에 EKS Clsuter를 설치하기 위해 eksctl yaml을 생성합니다.
 
 ```
 # eksctl 기반의 cluster 생성을 위한 yaml을 만듭니다.
@@ -8,6 +16,8 @@
 ~/environment/vpclattice/cloud9/eks-cluster1.sh
 
 ```
+
+#### EKS Cluster 설치
 
 정상적으로 eksctl yaml이 생성되었으면, 아래 명령을 통해 eks clsuter "c1"을 구성합니다.
 
@@ -17,9 +27,11 @@ eksctl create cluster -f lattice_eks01.yaml
 
 ```
 
-VPC Lattice 네트워크에서 트래픽을 수신하도록 Security Group을 구성합니다.&#x20;
+#### 네트워크 보안 환경 구성
 
-VPC Lattice와 통신하는 모든 포드가 VPC Lattice 관리형 PrefixList의 트래픽을 허용하도록 Security Group을 설정해야 합니다. [자세한 내용은 Security Group을 사용하여 자원에 대한 트래픽 제어 방법을 참조할 수 있습니다.](https://docs.aws.amazon.com/vpc/latest/userguide/VPC\_SecurityGroups.html)Lattice에는 IPv4 및 IPv6 PrefixList가 모두 있습니다.
+**VPC Lattice 네트워크에서 트래픽을 수신하도록 Security Group을 구성합니다.**&#x20;
+
+VPC Lattice와 통신하는 모든 Pod가 VPC Lattice 관리형 PrefixList의 트래픽을 허용하도록 Security Group을 설정해야 합니다. [자세한 내용은 Security Group을 사용하여 자원에 대한 트래픽 제어 방법을 참조할 수 있습니다.](https://docs.aws.amazon.com/vpc/latest/userguide/VPC\_SecurityGroups.html)Lattice에는 IPv4 및 IPv6 PrefixList가 모두 있습니다.
 
 ```
 CLUSTER1_SG=$(aws eks describe-cluster --name $CLUSTER1_NAME --output json| jq -r '.cluster.resourcesVpcConfig.clusterSecurityGroupId')
@@ -30,11 +42,11 @@ aws ec2 authorize-security-group-ingress --group-id $CLUSTER1_SG --ip-permission
 
 ```
 
+#### IRSA 구성을 위한 환경 준비
 
+Gateway API Controller가  AWS VPC Lattice에 접근해서, 구성이 가능하도록 정책을 설정합니다.
 
 Gateway API를 "Invoke"할 수 있는 아래 Policy로 IAM에서 Policy(recommended-inline-policy.json)를 생성하고 나중에 사용할 수 있도록 Policy ARN을 복사합니다.
-
-
 
 ```
 cat <<EoF > ~/environment/vpclattice/recommended-inline-policy.json
@@ -90,7 +102,7 @@ EoF
 
 ```
 
-
+앞서 구성한 Json 파일을 IAM 정책으로 생성합니다.
 
 ```
 aws iam create-policy \
@@ -101,6 +113,8 @@ aws iam create-policy \
 
 
 
+### Step2. Gateway API Controller 설치 구성 준비
+
 aws-application-networking-system 네임스페이스를 생성합니다.
 
 ```
@@ -108,7 +122,7 @@ kubectl create namespace aws-application-networking-system
 
 ```
 
-
+이 랩에서 사용할 Sample Code들이 있는 "aws-application-networking-k8s" Git을 Clone 합니다.
 
 ```
 cd ~/environment
@@ -116,16 +130,12 @@ git clone https://github.com/aws/aws-application-networking-k8s.git
 
 ```
 
-
-
 앞서 생성한 policy ARN에 대한 변수를 설정합니다.
 
 ```
 export VPCLatticeControllerIAMPolicyArn=$(aws iam list-policies --query 'Policies[?PolicyName==`VPCLatticeControllerIAMPolicy`].Arn' --output text)
 
 ```
-
-
 
 Pod Level의 권한을 위해서 "iamserviceaccount" 명령어를 수행합니다.
 
@@ -140,8 +150,6 @@ eksctl create iamserviceaccount \
    --approve
    
 ```
-
-
 
 Gateway Controller를 아래와 같이 ECR에 로그인 한 이후, Helm을 통해 설치합니다.
 
@@ -161,16 +169,12 @@ helm install gateway-api-controller \
    
 ```
 
-
-
 정상적으로 Gateway API Controller가 설치되었는지 확인합니다.
 
 ```
 kubectl --namespace aws-application-networking-system get pods -l "app.kubernetes.io/instance=gateway-api-controller"
 
 ```
-
-
 
 아래 명령어를 통해서 Gateway Class를 설치합니다.
 
