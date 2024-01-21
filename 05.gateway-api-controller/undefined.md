@@ -47,3 +47,4 @@ aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER_VPC_ID}
 
 <figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
 
+&#x20;s Gateway `my-hotel`  을 생성합니다.
