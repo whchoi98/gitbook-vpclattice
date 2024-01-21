@@ -271,3 +271,100 @@ kubectl exec deploy/parking -- curl $k8s_inventory_svc_dns
 
 ```
 
+1개의 HTTPRoute, K8s Service를 아래에서 처럼 manifest 파일을 생성해서 배포해 봅니다.
+
+```
+cat <<EoF > ~/environment/lattice-test-01.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lattice-test-01
+  labels:
+    app: lattice-test-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lattice-test-01
+  template:
+    metadata:
+      labels:
+        app: lattice-test-01
+    spec:
+      containers:
+      - image: whchoi98/network-multitool
+        imagePullPolicy: Always
+        name: lattice-test-01
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lattice-test-01
+spec:
+  selector:
+    app: lattice-test-01
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: lattice-test-01
+spec:
+  parentRefs:
+  - name: my-hotel
+    sectionName: http
+  rules:
+  - backendRefs:
+    - name: lattice-test-01
+      kind: Service
+      port: 80
+      weight: 10
+EoF
+
+```
+
+아래와 같이 다시 검증해 봅니다.
+
+```
+kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/parking
+kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/review 
+kubectl exec deploy/parking -- curl $k8s_inventory_svc_dns
+
+```
+
+### Step4. VPC Lattice Console 에서 확인
+
+VPC Lattice Console에서 결과를 확인해 봅니다.
+
+* "VPC Lattice" - "Service Network" - "my-hotel"
+
+<figure><img src="../.gitbook/assets/image (45).png" alt=""><figcaption></figcaption></figure>
+
+* "VPC Lattice" - "Service" - "Parking" - "Routing"
+
+<figure><img src="../.gitbook/assets/image (46).png" alt=""><figcaption></figcaption></figure>
+
+* "VPC Lattice" - "Target Groups"
+
+<figure><img src="../.gitbook/assets/image (47).png" alt=""><figcaption></figcaption></figure>
+
+* "VPC Lattice" - "Target Groups"-"k8s-default-parking-xxxx"
+
+<figure><img src="../.gitbook/assets/image (48).png" alt=""><figcaption></figcaption></figure>
