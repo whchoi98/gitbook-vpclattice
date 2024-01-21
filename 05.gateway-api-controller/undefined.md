@@ -6,9 +6,9 @@ description: 'Updtae : 2024.01.19'
 
 ## K8s에서 **service-to-service 구성**
 
-이 예제에서는 단일 VPC에 단일 클러스터를 생성한 다음 HTTP Route 2개(rate 및 inventory)와 Service 3개(Parking, Review 및 Inventory-1)를 구성합니다.
+이 예제에서는 단일 VPC에 단일 클러스터를 생성한 다음 GW API HTTP Route 2개(rate 및 inventory)와 EKS Service 3개(Parking, Review 및 Inventory)를 구성합니다.
 
-
+<figure><img src="../.gitbook/assets/image (44).png" alt=""><figcaption></figcaption></figure>
 
 ### Step1. VPC Lattice Service Network 생성
 
