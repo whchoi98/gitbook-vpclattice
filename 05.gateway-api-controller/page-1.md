@@ -4,7 +4,18 @@ description: 'Update : 2024.06.07'
 
 # AWS Gateway API Controller 설치
 
-아래와 같은 단계로 설치를 진행합니다.
+Kubernetes Gateway API Controller 소개
+
+Kubernetes Gateway API Controller는 Kubernetes 환경에서 네트워크 트래픽 관리를 위한 API 및 컨트롤러를 제공하는 기능입니다. 이 컨트롤러는 다음과 같은 주요 기능을 수행합니다:
+
+1. **Gateway**: 외부 트래픽을 수신하고 내부 서비스로 라우팅하는 진입점을 정의합니다. Gateway는 L4/L7 프로토콜을 지원하며, 로드밸런싱, TLS 종료, 인증 등의 기능을 제공합니다.
+2. **GatewayClass**: Gateway 구현체를 정의하고 구성하는 데 사용됩니다. GatewayClass는 Gateway 유형(예: Ingress, Service Mesh 등)과 구현 세부 사항을 설명합니다.
+3. **Route**: 외부 트래픽을 내부 서비스로 라우팅하는 규칙을 정의합니다. Route는 호스트, 경로, 리소스 매칭 조건 등을 지정할 수 있습니다.
+4. **HTTPRoute, TCPRoute, TLSRoute**: 각각 HTTP, TCP, TLS 트래픽을 처리하는 Route 유형입니다. 이들은 트래픽 규칙, 리소스 매칭, 로드밸런싱 등의 다양한 기능을 제공합니다.
+5. **ReferenceGrant**: 다른 네임스페이스의 리소스를 참조할 수 있도록 권한을 부여합니다. 이를 통해 여러 네임스페이스에 걸쳐 있는 서비스 간 연결을 구성할 수 있습니다.
+6. **BackendPolicy**: 백엔드 서비스의 상태 점검, 연결 관리, 서킷 브레이킹 등의 설정을 제공합니다.
+
+Kubernetes Gateway API Controller와 AWS Gateway API Controller 연동을 위해 아래와 같은 단계로 설치를 진행합니다.
 
 * Step1. Client VPC에 EKS Cluster를 설치
 * Step2. VPC Lattice와 AWS GW API Controller간의 통신을 위한 구성
@@ -51,7 +62,7 @@ aws ec2 authorize-security-group-ingress --group-id $CLUSTER1_SG --ip-permission
 
 ```
 
-#### IRSA 구성을 위한 환경 준비
+IRSA 구성을 위한 환경 준비
 
 Gateway API Controller가  AWS VPC Lattice에 접근해서, 구성이 가능하도록 정책을 설정합니다.
 
@@ -188,7 +199,7 @@ kubectl --namespace aws-application-networking-system get pods -l "app.kubernete
 아래 명령어를 통해서 Gateway Class를 설치합니다.
 
 ```
-kubectl apply -f ~/environment/aws-application-networking-k8s/examples/gatewayclass.yaml 
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/gatewayclass.yaml
 
 ```
 

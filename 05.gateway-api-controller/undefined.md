@@ -38,8 +38,6 @@ aws vpc-lattice create-service-network-vpc-association --service-network-identif
 VPC는 1개의 Service Network에만 Associaation 이 가능합니다. 앞서 LAB에서 Superapp에 Client VPC를 Assocation 시켰다면, 삭제 후 Association 해야 합니다.
 {% endhint %}
 
-
-
 ```
 aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER_VPC_ID} | jq -r '.items[].status'
 
@@ -56,9 +54,9 @@ aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER_VPC_ID}
 아래 명령을 통해서 Gateway `my-hotel`  을 생성합니다.&#x20;
 
 ```
-cd ~/environment/aws-application-networking-k8s
-kubectl apply -f examples/my-hotel-gateway.yaml
-
+#cd ~/environment/aws-application-networking-k8s
+#kubectl apply -f examples/my-hotel-gateway.yaml
+kubectl apply -f ~/environment/aws-application-networking-k8s/files/examples/my-hotel-gateway.yaml 
 ```
 
 아래와 같은 manifest 파일 형식입니다.
@@ -96,9 +94,10 @@ my-hotel   amazon-vpc-lattice             True         99s
 "Parking Service및 "Review Service"를 위한 HTTP Route - "Rate" 를 생성하고, K8s의 Pod와 Service를 생성합니다.
 
 ```
-kubectl apply -f examples/parking.yaml
-kubectl apply -f examples/review.yaml
-kubectl apply -f examples/rate-route-path.yaml
+cd ~/environment/aws-application-networking-k8s/files/examples/
+kubectl apply -f parking.yaml
+kubectl apply -f review.yaml
+kubectl apply -f rate-route-path.yaml
 
 ```
 
@@ -169,6 +168,48 @@ spec:
 
 ```
 
+아래는 "review"에 대한 manifest 파일의 내용입니다.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review
+  labels:
+    app: review
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: review
+  template:
+    metadata:
+      labels:
+        app: review
+    spec:
+      containers:
+      - name: aug24-review
+        image: public.ecr.aws/x2j8p8w7/http-server:latest
+        env:
+        - name: PodName
+          value: "review handler pod"
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review
+spec:
+  selector:
+    app: review
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8090
+
+```
+
 아래는 "rate-route-path" 라는 HTTPRoute Path 입니다.
 
 ```
@@ -202,8 +243,71 @@ spec:
 추가로 HTTPRoute `inventory`  manifest 파일을 배포합니다.
 
 ```
-kubectl apply -f examples/inventory-ver1.yaml
-kubectl apply -f examples/inventory-route.yaml
+cd ~/environment/aws-application-networking-k8s/files/examples/
+kubectl apply -f inventory-ver1.yaml
+kubectl apply -f inventory-route.yaml
+
+```
+
+아래는 inventory-ver1에 대한 manifest 파일 입니다.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-ver1
+  labels:
+    app: inventory-ver1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inventory-ver1
+  template:
+    metadata:
+      labels:
+        app: inventory-ver1
+    spec:
+      containers:
+      - name: inventory-ver1
+        image: public.ecr.aws/x2j8p8w7/http-server:latest
+        env:
+        - name: PodName
+          value: "Inventory-ver1 handler pod"
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-ver1
+spec:
+  selector:
+    app: inventory-ver1
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8090
+
+```
+
+아래는 "inventory-route" 라는 HTTPRoute Path 입니다.
+
+```
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: inventory
+spec:
+  parentRefs:
+  - name: my-hotel
+    sectionName: http
+  rules:
+  - backendRefs:
+    - name: inventory-ver1
+      kind: Service
+      port: 80
+      weight: 10
 
 ```
 
@@ -271,6 +375,10 @@ kubectl exec deploy/parking -- curl $k8s_inventory_svc_dns
 
 ```
 
+"parking', "rate", "inventory-ver1"의 실제 Lattice Service DNS 주소들을 복사해 둡니다.
+
+
+
 1개의 HTTPRoute, K8s Service를 아래에서 처럼 manifest 파일을 생성해서 배포해 봅니다.
 
 ```
@@ -283,7 +391,7 @@ metadata:
   labels:
     app: lattice-test-01
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: lattice-test-01
@@ -338,15 +446,45 @@ spec:
       weight: 10
 EoF
 
+kubectl apply -f ~/environment/lattice-test-01.yaml
+```
+
+
+
+```
+kubectl get httproute inventory -o yaml
+k8s_lattice_test_01_svc_dns=$(kubectl get httproute lattice-test-01 -o json | jq -r '.metadata.annotations."application-networking.k8s.aws/lattice-assigned-domain-name"')
+echo "export k8s_lattice_test_01_svc_dns=${k8s_lattice_test_01_svc_dns}" | tee -a ~/.bash_profile
+source ~/.bash_profile
+
 ```
 
 아래와 같이 다시 검증해 봅니다.
 
-```
-kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/parking
+<pre><code>kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/parking
 kubectl exec deploy/inventory-ver1 -- curl $k8s_rates_svc_dns/review 
 kubectl exec deploy/parking -- curl $k8s_inventory_svc_dns
+<strong>
+</strong></code></pre>
 
+Client VPC의 EC2에서 확인을 해 봅니다. Cloud9에서 새로운 터미널을 Open하고 아래와 같이 접속합니다.
+
+```
+aws ssm start-session --target $InstanceClient1
+
+```
+
+앞서 복사해둔 "$k8s\_rates\_svc\_dns/parking" , "$k8s\_rates\_svc\_dns/review", "$k8s\_inventory\_svc\_dns" DNS 주소를 "InstanceClient1"에서 확인하고 접속해 봅니다.
+
+```
+nslookup $k8s_rates_svc_dns/parking
+nslookup $k8s_rates_svc_dns/review
+nslookup $k8s_inventory_svc_dns
+nslookup $k8s_inventory_svc_dns
+curl $k8s_rates_svc_dns/parking
+curl $k8s_rates_svc_dns/review
+curl $k8s_inventory_svc_dns
+curl $k8s_lattice_test_01_svc_dns
 ```
 
 ### Step4. VPC Lattice Console 에서 확인
