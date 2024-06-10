@@ -47,7 +47,7 @@ aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER_VPC_ID}
 
 "VPC lattice" - "Service Networks" - "my-hotel" 에서도 확인이 가능합니다.
 
-<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (1).png" alt=""><figcaption></figcaption></figure>
 
 ### Step2. GW API에서 Gateway 생성&#x20;
 

@@ -4,6 +4,8 @@ description: 'Update : 2024-06-09'
 
 # MultiCluster 구성
 
+<figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
+
 ### Step1. EKS Cluster 설치 <a href="#step1.-eks-cluster" id="step1.-eks-cluster"></a>
 
 **EKS Cluster 설치 준비**
@@ -174,8 +176,6 @@ kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networkin
 
 ```
 
-
-
 Kubernetes Gateway 'my-hotel'을 생성합니다:
 
 ```
@@ -184,31 +184,32 @@ kubectl apply -f files/examples/my-hotel-gateway.yaml
 
 ```
 
-
-
-```
-kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/gatewayclass.yaml
-
-```
-
-
-
-my-hotel Gateway가 PROGRAMMED 상태가 True로 생성되었는지 확인합니다.
+아래 명령을 통해 정상적으로 Programmed 되었는지 확인합니다.
 
 ```
 kubectl get gateway
 
 ```
 
-아래와 같은 결과가 출력되어야 합니다.
+아래와 같은 결과가 출력됩니다.
 
 ```
 $ kubectl get gateway
 NAME       CLASS                ADDRESS   PROGRAMMED   AGE
-my-hotel   amazon-vpc-lattice             True         6h57m
+my-hotel   amazon-vpc-lattice             True         11s
 ```
 
+
+
 ### Step4. 신규 서비스 설치
+
+Service network에 Associsation 시킵니다.
+
+```
+aws vpc-lattice create-service-network-vpc-association --service-network-identifier ${my_hotel_sn_id} --vpc-identifier ${CLUSTER2_VPC_ID}
+aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER2_VPC_ID} | jq -r '.items[].status'
+
+```
 
 c2 클러스터에 "inventory-ver2" 서비스를 배포합니다.
 

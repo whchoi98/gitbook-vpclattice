@@ -20,7 +20,7 @@ Kubernetes Gateway API Controller와 AWS Gateway API Controller 연동을 위해
 * Step1. Client VPC에 EKS Cluster를 설치
 * Step2. VPC Lattice와 AWS GW API Controller간의 통신을 위한 구성
 
-<figure><img src="../.gitbook/assets/image (42).png" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/image (61).png" alt=""><figcaption></figcaption></figure>
 
 ### Step1. EKS Cluster 설치
 
