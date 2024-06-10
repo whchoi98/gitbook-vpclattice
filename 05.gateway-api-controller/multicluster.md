@@ -44,7 +44,7 @@ aws ec2 authorize-security-group-ingress --group-id $CLUSTER2_SG --ip-permission
 
 ```
 
-### Step3.AWS Gateway API Controller 생성
+### Step3.AWS Gateway API Controller 권한 설정 준비
 
 새로운 컨트롤러를 두 번째 Kubernetes 클러스터 "c2"에 생성합니다 (첫 번째 클러스터를 생성하고 컨트롤러를 설치하는 것과 동일한 방식으로 설정합니다.).
 
@@ -80,26 +80,101 @@ kubectl config use-context c2
 이제 aws-gateway-controller를 설치 하기 위해, aws-application-networking-system 네임스페이스를 생성합니다.
 
 ```
-kubectl create namespace aws-application-networking-system
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/deploy-namesystem.yaml
 
 ```
 
 
 
-AWS Gateway API 컨트롤러는 VPC Lattice 서비스 네트워크를 사용해야 합니다.
+Pod Identity(권장) 또는 IRSA(IAM Role for Service Account)를 기반으로 설정할 수 있습니다.
 
-Helm 사용 시 컨트롤러를 Helm으로 설치한 경우, defaultServiceNetwork 변수를 지정하여 차트 구성을 업데이트할 수 있습니다.
+Gateway API Controller는 Pod Identity를 권장합니다.
 
-```
-aws ecr-public get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin public.ecr.aws
-helm upgrade gateway-api-controller \
-oci://public.ecr.aws/aws-application-networking-k8s/aws-gateway-controller-chart \
---version=v1.0.5 \
---reuse-values \
---namespace aws-application-networking-system \
---set=defaultServiceNetwork=my-hotel
+1. **Pod Identity Agent 설정**
+
+EKS Pod Identity를 사용하여 필요한 권한으로 컨트롤러의 Kubernetes Service Account을 구성합니다.
+
+아래 AWS CLI를 사용해서 Pod Identity AddOn을 생성합니다.
 
 ```
+aws eks create-addon --cluster-name $CLUSTER2_NAME --addon-name eks-pod-identity-agent --addon-version v1.0.0-eksbuild.1
+
+```
+
+아래 명령을 통해 각 노드별로 AddOn이 정상적으로 설치되었는 지 확인합니다.
+
+```
+kubectl get pods -n kube-system | grep 'eks-pod-identity-agent'
+
+```
+
+아래와 같이 결과가 출력됩니다.
+
+```
+$ kubectl get pods -n kube-system | grep 'eks-pod-identity-agent'
+eks-pod-identity-agent-98hrb          1/1     Running   0          68s
+eks-pod-identity-agent-mb9gv          1/1     Running   0          68s
+eks-pod-identity-agent-mlh7k          1/1     Running   0          68s
+```
+
+aws-application-networking-system 네임스페이스를 설정합니다.
+
+```
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/deploy-namesystem.yaml
+
+```
+
+2. Kubernetes Service Account에 Role을 할당.
+
+Service Account를 생성합니다.
+
+```
+cat >gateway-api-controller-service-account.yaml <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: gateway-api-controller
+    namespace: aws-application-networking-system
+EOF
+kubectl apply -f gateway-api-controller-service-account.yaml
+
+```
+
+aws eks create-pod-identity-association 명령을 사용하여 Service Account와 IAM 역할을 연결합니다.
+
+```
+aws eks create-pod-identity-association --cluster-name $CLUSTER2_NAME --role-arn $VPCLatticeControllerIAMRoleArn --namespace aws-application-networking-system --service-account gateway-api-controller
+
+```
+
+### Step4. AWS Gateway Controller 설치 
+
+AWS Gateway API 컨트롤러를 설치합니다.
+
+컨트롤러를 배포하려면 kubectl 또는 Helm 중 하나를 실행합니다.&#x20;
+
+아래와 같이 kubectl 을 통해 설치합니다.
+
+```
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/deploy-v1.0.5.yaml
+
+```
+
+정상적으로 Gateway API Controller가 설치되었는지 확인합니다.
+
+```
+kubectl --namespace aws-application-networking-system get pods
+
+```
+
+아래 명령어를 통해서 Gateway Class를 설치합니다.
+
+```
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/gatewayclass.yaml
+
+```
+
+
 
 Kubernetes Gateway 'my-hotel'을 생성합니다:
 
@@ -108,6 +183,15 @@ cd ~/environment/aws-application-networking-k8s/
 kubectl apply -f files/examples/my-hotel-gateway.yaml
 
 ```
+
+
+
+```
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/gatewayclass.yaml
+
+```
+
+
 
 my-hotel Gateway가 PROGRAMMED 상태가 True로 생성되었는지 확인합니다.
 
