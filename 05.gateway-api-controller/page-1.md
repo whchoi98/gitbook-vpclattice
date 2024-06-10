@@ -45,9 +45,11 @@ eksctl create cluster -f lattice_eks01.yaml
 
 ```
 
-#### 네트워크 보안 환경 구성
+### Step 2.네트워크 보안 환경 구성
 
 **VPC Lattice 네트워크에서 트래픽을 수신하도록 Security Group을 구성합니다.**&#x20;
+
+* Lattice VPC CIDR 주소 대역 - 169.254.0.0/16&#x20;
 
 VPC Lattice와 통신하는 모든 Pod가 VPC Lattice 관리형 PrefixList의 트래픽을 허용하도록 Security Group을 설정해야 합니다. [자세한 내용은 Security Group을 사용하여 자원에 대한 트래픽 제어 방법을 참조할 수 있습니다.](https://docs.aws.amazon.com/vpc/latest/userguide/VPC\_SecurityGroups.html)Lattice에는 IPv4 및 IPv6 PrefixList가 모두 있습니다.
 
@@ -62,83 +64,120 @@ aws ec2 authorize-security-group-ingress --group-id $CLUSTER1_SG --ip-permission
 
 ```
 
-IRSA 구성을 위한 환경 준비
+### Step3. AWS Gateway API 컨트롤러 권한 설정
 
-Gateway API Controller가  AWS VPC Lattice에 접근해서, 구성이 가능하도록 정책을 설정합니다.
+AWS Gateway API 컨트롤러는 Gateway API를 호출할 수 있는 필요한 권한을 가져야 합니다.
 
-Gateway API를 "Invoke"할 수 있는 아래 Policy로 IAM에서 Policy(recommended-inline-policy.json)를 생성하고 나중에 사용할 수 있도록 Policy ARN을 복사합니다.
-
-```
-cat <<EoF > ~/environment/vpclattice/recommended-inline-policy.json
-{
- "Version": "2012-10-17",
- "Statement": [
-     {
-         "Effect": "Allow",
-         "Action": [
-             "vpc-lattice:*",
-             "ec2:DescribeVpcs",
-             "ec2:DescribeSubnets",
-             "ec2:DescribeTags",
-             "ec2:DescribeSecurityGroups",
-             "logs:CreateLogDelivery",
-             "logs:GetLogDelivery",
-             "logs:DescribeLogGroups",
-             "logs:PutResourcePolicy",
-             "logs:DescribeResourcePolicies",
-             "logs:UpdateLogDelivery",
-             "logs:DeleteLogDelivery",
-             "logs:ListLogDeliveries",
-             "tag:GetResources",
-             "firehose:TagDeliveryStream",
-             "s3:GetBucketPolicy",
-             "s3:PutBucketPolicy"
-         ],
-         "Resource": "*"
-     },
-     {
-         "Effect" : "Allow",
-         "Action" : "iam:CreateServiceLinkedRole",
-         "Resource" : "arn:aws:iam::*:role/aws-service-role/vpc-lattice.amazonaws.com/AWSServiceRoleForVpcLattice",
-         "Condition" : {
-             "StringLike" : {
-                 "iam:AWSServiceName" : "vpc-lattice.amazonaws.com"
-             }
-         }
-     },
-     {
-         "Effect" : "Allow",
-         "Action" : "iam:CreateServiceLinkedRole",
-         "Resource" : "arn:aws:iam::*:role/aws-service-role/delivery.logs.amazonaws.com/AWSServiceRoleForLogDelivery",
-         "Condition" : {
-             "StringLike" : {
-                 "iam:AWSServiceName" : "delivery.logs.amazonaws.com"
-             }
-         }
-     }
-   ]
-}
-EoF
+1. IAM에서 다음 내용으로 정책(recommended-inline-policy.json)을 생성하고, 정책의 ARN을 환경변수에 저장해 둡니다.
 
 ```
+curl https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/recommended-inline-policy.json  -o recommended-inline-policy.json
 
-앞서 구성한 Json 파일을 IAM 정책으로 생성합니다.
-
-```
 aws iam create-policy \
-   --policy-name VPCLatticeControllerIAMPolicy \
-   --policy-document file://~/environment/vpclattice/recommended-inline-policy.json
+    --policy-name VPCLatticeControllerIAMPolicy \
+    --policy-document file://recommended-inline-policy.json
+
+export VPCLatticeControllerIAMPolicyArn=$(aws iam list-policies --query 'Policies[?PolicyName==`VPCLatticeControllerIAMPolicy`].Arn' --output text)
+echo "export VPCLatticeControllerIAMPolicyArn=${VPCLatticeControllerIAMPolicyArn}" | tee -a ~/.bash_profile
+source ~/.bash_profile
 
 ```
 
-
-
-### Step2. Gateway API Controller 설치 구성 준비
-
-aws-application-networking-system 네임스페이스를 생성합니다.
+2. `aws-application-networking-system` 네임스페이스를 생성합니다.
 
 ```
-kubectl create namespace aws-application-networking-system
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/deploy-namesystem.yaml
+
+```
+
+### Step4. Gateway API Controller 권한 설정 준비
+
+Pod Identity(권장) 또는 IRSA(IAM Role for Service Account)를 기반으로 설정할 수 있습니다.
+
+Gateway API Controller는 Pod Identity를 권장합니다.
+
+1. **Pod Identity Agent 설정**
+
+EKS Pod Identity를 사용하여 필요한 권한으로 컨트롤러의 Kubernetes Service Account을 구성합니다.
+
+아래 AWS CLI를 사용해서 Pod Identity AddOn을 생성합니다.
+
+```
+aws eks create-addon --cluster-name $CLUSTER1_NAME --addon-name eks-pod-identity-agent --addon-version v1.0.0-eksbuild.1
+
+```
+
+아래 명령을 통해 각 노드별로 AddOn이 정상적으로 설치되었는 지 확인합니다.
+
+```
+kubectl get pods -n kube-system | grep 'eks-pod-identity-agent'
+
+```
+
+아래와 같이 결과가 출력됩니다.
+
+```
+$ kubectl get pods -n kube-system | grep 'eks-pod-identity-agent'
+eks-pod-identity-agent-98hrb          1/1     Running   0          68s
+eks-pod-identity-agent-mb9gv          1/1     Running   0          68s
+eks-pod-identity-agent-mlh7k          1/1     Running   0          68s
+```
+
+2. Kubernetes Service Account에 Role을 할당.
+
+Service Account를 생성합니다.
+
+```
+cat >gateway-api-controller-service-account.yaml <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: gateway-api-controller
+    namespace: aws-application-networking-system
+EOF
+kubectl apply -f gateway-api-controller-service-account.yaml
+
+```
+
+Pod Identity를 위한 Trust Policy Role을 작성합니다.
+
+```
+cat >trust-relationship.json <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowEksAuthToAssumeRoleForPodIdentity",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "pods.eks.amazonaws.com"
+            },
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ]
+        }
+    ]
+}
+EOF
+
+```
+
+Role을 생성합니다.
+
+```
+aws iam create-role --role-name VPCLatticeControllerIAMRole --assume-role-policy-document file://trust-relationship.json --description "IAM Role for AWS Gateway API Controller for VPC Lattice"
+aws iam attach-role-policy --role-name VPCLatticeControllerIAMRole --policy-arn=$VPCLatticeControllerIAMPolicyArn
+export VPCLatticeControllerIAMRoleArn=$(aws iam list-roles --query 'Roles[?RoleName==`VPCLatticeControllerIAMRole`].Arn' --output text)
+echo "export VPCLatticeControllerIAMRoleArn=${VPCLatticeControllerIAMRoleArn}" | tee -a ~/.bash_profile
+source ~/.bash_profile
+
+```
+
+aws eks create-pod-identity-association 명령을 사용하여 Service Account와 IAM 역할을 연결합니다.
+
+```
+aws eks create-pod-identity-association --cluster-name $CLUSTER1_NAME --role-arn $VPCLatticeControllerIAMRoleArn --namespace aws-application-networking-system --service-account gateway-api-controller
 
 ```
 
@@ -150,49 +189,21 @@ git clone https://github.com/aws/aws-application-networking-k8s.git
 
 ```
 
-앞서 생성한 policy ARN에 대한 변수를 설정합니다.
+### Step4. AWS Gateway Controller 설치
+
+컨트롤러를 배포하려면 kubectl 또는 Helm 중 하나를 실행합니다.&#x20;
+
+아래와 같이 kubectl 을 통해 설치합니다.
 
 ```
-export VPCLatticeControllerIAMPolicyArn=$(aws iam list-policies --query 'Policies[?PolicyName==`VPCLatticeControllerIAMPolicy`].Arn' --output text)
+kubectl apply -f https://raw.githubusercontent.com/aws/aws-application-networking-k8s/main/files/controller-installation/deploy-v1.0.5.yaml
 
-```
-
-Pod Level의 권한을 위해서 "iamserviceaccount" 명령어를 수행합니다.
-
-```
-eksctl create iamserviceaccount \
-   --cluster=$CLUSTER1_NAME \
-   --namespace=aws-application-networking-system \
-   --name=gateway-api-controller \
-   --attach-policy-arn=$VPCLatticeControllerIAMPolicyArn \
-   --override-existing-serviceaccounts \
-   --region $AWS_REGION \
-   --approve
-   
-```
-
-Gateway Controller를 아래와 같이 ECR에 로그인 한 이후, Helm을 통해 설치합니다.
-
-```
-# login to ECR
-aws ecr-public get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin public.ecr.aws
-# Run helm with either install or upgrade
-helm install gateway-api-controller \
-   oci://public.ecr.aws/aws-application-networking-k8s/aws-gateway-controller-chart\
-   --version=v1.0.3 \
-   --set=serviceAccount.create=false --namespace aws-application-networking-system \
-   --set=log.level=info \
-   --set=awsRegion=$AWS_REGION \
-   --set=clusterVpcId=$CLUSTER_VPC_ID \
-   --set=awsAccountId=$ACCOUNT_ID \
-   --set=clusterName=$CLUSTER1_NAME
-   
 ```
 
 정상적으로 Gateway API Controller가 설치되었는지 확인합니다.
 
 ```
-kubectl --namespace aws-application-networking-system get pods -l "app.kubernetes.io/instance=gateway-api-controller"
+kubectl --namespace aws-application-networking-system get pods
 
 ```
 
