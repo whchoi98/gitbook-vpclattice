@@ -1,5 +1,5 @@
 ---
-description: 'Update : 2024.01.08'
+description: 'Update : 2024.06.07'
 ---
 
 # 02. Service to Service 연결
@@ -10,7 +10,9 @@ description: 'Update : 2024.01.08'
 
 <figure><img src="../.gitbook/assets/image (4) (1) (1).png" alt=""><figcaption></figcaption></figure>
 
-위의 SupperApp 구성을 위해서 아래와 같은 3단계의 구성을 진행할 것입니다.
+앞서 Client VPC, Reservation VPC, Rate VPC, Payments VPC는 사전에 정의된 Cloudformation Yaml 파일로 구성을 완료하였습니다.
+
+위의 SupperApp 구성을 위해서 VPC Lattice는 아래와 같은 3단계의 구성을 진행할 것입니다.
 
 <figure><img src="../.gitbook/assets/image (1) (1) (1) (1) (1) (1) (1) (1) (1).png" alt=""><figcaption></figcaption></figure>
 
