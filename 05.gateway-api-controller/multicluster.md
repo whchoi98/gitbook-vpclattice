@@ -201,11 +201,12 @@ my-hotel   amazon-vpc-lattice             True         11s
 
 
 
-### Step4. 신규 서비스 설치
+### Step5. 신규 서비스 설치
 
 Service network에 Associsation 시킵니다.
 
 ```
+source ~/.bash_profile
 aws vpc-lattice create-service-network-vpc-association --service-network-identifier ${my_hotel_sn_id} --vpc-identifier ${CLUSTER2_VPC_ID}
 aws vpc-lattice list-service-network-vpc-associations --vpc-id ${CLUSTER2_VPC_ID} | jq -r '.items[].status'
 
@@ -260,7 +261,7 @@ spec:
       targetPort: 8090
 ```
 
-### Step5.Service Export/Import 구성
+### Step6.Service Export/Import 구성
 
 #### Service Export 하기
 

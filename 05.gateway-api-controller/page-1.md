@@ -189,7 +189,7 @@ git clone https://github.com/aws/aws-application-networking-k8s.git
 
 ```
 
-### Step4. AWS Gateway Controller 설치
+### Step5. AWS Gateway Controller 설치
 
 컨트롤러를 배포하려면 kubectl 또는 Helm 중 하나를 실행합니다.&#x20;
 
