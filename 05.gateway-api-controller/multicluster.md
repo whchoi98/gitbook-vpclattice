@@ -403,3 +403,42 @@ kubectl exec deploy/review -- sh -c 'for ((i=1; i<=30; i++)); do curl -s "$0"; d
 
 ```
 
+아래와 같이 결과를 확인 할 수 있습니다.
+
+```
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver1-57b78749cb-64mtx): Inventory-ver1 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+Requsting to Pod(inventory-ver2-7c844f4b89-pnhhh): Inventory-ver2 handler pod
+#Inventory-ver2 와 Inventory-ver1로 Blue/Green 형태로 분산되는 것을 확인
+```
+
+아래 파일을 변경하면서 적용해 봅니다.
+
+```
+#inventory-route-bluegreen.yaml
+#weight를 조절해 봅니다.
+
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: inventory
+spec:
+  parentRefs:
+  - name: my-hotel
+    sectionName: http
+  rules:
+  - backendRefs:
+    - name: inventory-ver1
+      kind: Service
+      port: 80
+      weight: 10
+    - name: inventory-ver2
+      kind: ServiceImport
+      weight: 90
+      
+```
