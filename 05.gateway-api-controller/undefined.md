@@ -477,10 +477,9 @@ aws ssm start-session --target $InstanceClient1
 앞서 복사해둔 "$k8s\_rates\_svc\_dns/parking" , "$k8s\_rates\_svc\_dns/review", "$k8s\_inventory\_svc\_dns" DNS 주소를 "InstanceClient1"에서 확인하고 접속해 봅니다.
 
 ```
-nslookup $k8s_rates_svc_dns/parking
-nslookup $k8s_rates_svc_dns/review
+nslookup $k8s_rates_svc_dns
 nslookup $k8s_inventory_svc_dns
-nslookup $k8s_inventory_svc_dns
+nslookup $k8s_lattice_test_01_svc_dns
 curl $k8s_rates_svc_dns/parking
 curl $k8s_rates_svc_dns/review
 curl $k8s_inventory_svc_dns
