@@ -1,7 +1,3 @@
----
-description: 'Update : 2024-06-09'
----
-
 # MultiCluster 구성
 
 <figure><img src="../.gitbook/assets/image.png" alt=""><figcaption></figcaption></figure>
@@ -442,3 +438,6 @@ spec:
       weight: 90
       
 ```
+
+생성한 EKS 클러스터의 Kubernetes inventory 서비스를 동일한 AWS 계정에 있는 다른 VPC의 새 클러스터로 마이그레이션할 것입니다.
+
